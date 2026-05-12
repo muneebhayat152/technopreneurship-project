@@ -5,13 +5,12 @@ namespace App\Http\Controllers;
 use App\Jobs\ReclusterCompanyJob;
 use App\Models\AdminApprovalRequest;
 use App\Models\Complaint;
-use App\Models\User;
 use App\Services\ApprovalRequestNotifier;
 use App\Services\AuditLogger;
 use App\Services\ComplaintSentimentAnalyzer;
 use App\Services\PlatformActivityNotifier;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 
 class ComplaintController extends Controller
@@ -26,7 +25,7 @@ class ComplaintController extends Controller
             return;
         }
 
-        ReclusterCompanyJob::dispatch($companyId)->afterCommit();
+        Bus::dispatchSync(new ReclusterCompanyJob($companyId));
     }
 
     public function store(Request $request)
@@ -84,8 +83,13 @@ class ComplaintController extends Controller
         $user = $request->user();
 
         if ($user->role === 'super_admin') {
-            $query = Complaint::with(['user.company', 'issueCluster']);
-        } elseif ($user->role === 'admin') {
+            return response()->json([
+                'message' => 'Platform administrators manage organizations only. Complaint data is visible to each organization’s administrators and customers.',
+                'complaints' => [],
+            ], 403);
+        }
+
+        if ($user->role === 'admin') {
             $query = Complaint::with(['user.company', 'issueCluster'])
                 ->where('company_id', $user->company_id);
         } else {
@@ -131,12 +135,14 @@ class ComplaintController extends Controller
             ], 403);
         }
 
-        if ($user->role !== 'super_admin' && (int) $complaint->company_id !== (int) $user->company_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if ($user->role === 'super_admin') {
+            return response()->json([
+                'message' => 'Platform administrators do not change tenant complaint status directly. Approve the organization admin’s request in the approval queue.',
+            ], 403);
         }
 
-        if ($user->role === 'super_admin') {
-            return $this->applyComplaintStatus($request, $complaint, $user);
+        if ((int) $complaint->company_id !== (int) $user->company_id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         if ($user->role === 'admin' && $user->company_id) {
@@ -195,34 +201,6 @@ class ComplaintController extends Controller
         return response()->json(['message' => 'Unauthorized'], 403);
     }
 
-    private function applyComplaintStatus(Request $request, Complaint $complaint, User $user): JsonResponse
-    {
-        $fromStatus = $complaint->status;
-        $complaint->update([
-            'status' => $request->status,
-        ]);
-
-        AuditLogger::record(
-            $request,
-            $user,
-            'complaint.status_changed',
-            'complaint',
-            (int) $complaint->id,
-            [
-                'company_id' => $complaint->company_id,
-                'from' => $fromStatus,
-                'to' => $request->status,
-            ]
-        );
-
-        $this->queueRecluster($complaint->company_id ? (int) $complaint->company_id : null);
-
-        return response()->json([
-            'message' => 'Status updated successfully',
-            'complaint' => $complaint->fresh(),
-        ]);
-    }
-
     public function destroy(Request $request, $id)
     {
         $user = $request->user();
@@ -230,8 +208,12 @@ class ComplaintController extends Controller
         $complaint = Complaint::findOrFail($id);
 
         if ($user->role === 'super_admin') {
-            // Platform scope: allowed.
-        } elseif ((int) $complaint->user_id === (int) $user->id) {
+            return response()->json([
+                'message' => 'Platform administrators do not delete tenant complaints.',
+            ], 403);
+        }
+
+        if ((int) $complaint->user_id === (int) $user->id) {
             // Only the submitting user may remove their own complaint.
         } else {
             return response()->json([

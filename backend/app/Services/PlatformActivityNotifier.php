@@ -10,7 +10,7 @@ use App\Notifications\NewTenantOrganizationNotification;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * In-app + mail alerts for platform owners (super admins) and tenant administrators.
+ * In-app + mail alerts for tenant administrators (not platform super admins — they do not receive complaint content).
  */
 class PlatformActivityNotifier
 {
@@ -32,16 +32,9 @@ class PlatformActivityNotifier
         $companyId = (int) $complaint->company_id;
 
         $recipients = User::query()
-            ->where(function ($q) use ($companyId, $submitterId) {
-                $q->where(function ($q2) use ($companyId, $submitterId) {
-                    $q2->where('company_id', $companyId)
-                        ->where('role', 'admin')
-                        ->where('id', '!=', $submitterId);
-                })->orWhere(function ($q3) use ($submitterId) {
-                    $q3->where('role', 'super_admin')
-                        ->where('id', '!=', $submitterId);
-                });
-            })
+            ->where('company_id', $companyId)
+            ->where('role', 'admin')
+            ->where('id', '!=', $submitterId)
             ->get();
         if ($recipients->isEmpty()) {
             return;

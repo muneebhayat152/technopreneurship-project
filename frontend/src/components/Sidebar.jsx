@@ -79,6 +79,11 @@ function Sidebar() {
             {roleTitle ? (
               <p className="truncate text-xs font-medium text-slate-400">
                 {roleTitle}
+                {user?.role === "super_admin" ? (
+                  <span className="mt-0.5 block truncate text-[11px] font-normal text-slate-500">
+                    Organizations & approvals · tenant data stays with each organization
+                  </span>
+                ) : null}
               </p>
             ) : null}
           </div>
@@ -88,35 +93,41 @@ function Sidebar() {
           <NavItem
             to="/"
             icon={<LayoutDashboard className="h-4 w-4 opacity-90" />}
-            label="Dashboard"
+            label={user?.role === "super_admin" ? "Platform" : "Dashboard"}
             active={location.pathname === "/"}
           />
 
-          <NavItem
-            to="/complaints"
-            icon={<MessageSquareText className="h-4 w-4 opacity-90" />}
-            label="Complaints"
-            active={location.pathname === "/complaints"}
-          />
+          {user?.role !== "super_admin" && (
+            <NavItem
+              to="/complaints"
+              icon={<MessageSquareText className="h-4 w-4 opacity-90" />}
+              label="Complaints"
+              active={location.pathname === "/complaints"}
+            />
+          )}
 
-          <NavItem
-            to="/issues"
-            icon={<Sparkles className="h-4 w-4 opacity-90" />}
-            label="Issue patterns"
-            active={
-              location.pathname === "/issues" ||
-              location.pathname.startsWith("/diagnosis")
-            }
-          />
+          {user?.role !== "super_admin" && (
+            <NavItem
+              to="/issues"
+              icon={<Sparkles className="h-4 w-4 opacity-90" />}
+              label="Issue patterns"
+              active={
+                location.pathname === "/issues" ||
+                location.pathname.startsWith("/diagnosis")
+              }
+            />
+          )}
 
-          <NavItem
-            to="/alerts"
-            icon={<Bell className="h-4 w-4 opacity-90" />}
-            label="Smart alerts"
-            active={location.pathname === "/alerts"}
-          />
+          {user?.role !== "super_admin" && (
+            <NavItem
+              to="/alerts"
+              icon={<Bell className="h-4 w-4 opacity-90" />}
+              label="Smart alerts"
+              active={location.pathname === "/alerts"}
+            />
+          )}
 
-          {(user?.role === "admin" || user?.role === "super_admin") && (
+          {user?.role === "admin" && (
             <NavItem
               to="/admin"
               icon={<Users className="h-4 w-4 opacity-90" />}

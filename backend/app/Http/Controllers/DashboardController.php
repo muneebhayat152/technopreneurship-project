@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminApprovalRequest;
+use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\IssueCluster;
 use Carbon\Carbon;
@@ -14,9 +16,37 @@ class DashboardController extends Controller
         $user = $request->user()->loadMissing('company');
 
         if ($user->role === 'super_admin') {
-            $complaints = Complaint::query();
-            $clusterQuery = IssueCluster::query()->withCount('complaints');
-        } elseif ($user->role === 'admin') {
+            $pendingReg = Company::query()->where('registration_status', Company::REGISTRATION_PENDING)->count();
+            $rejectedReg = Company::query()->where('registration_status', Company::REGISTRATION_REJECTED)->count();
+            $activeTenants = Company::query()
+                ->where('registration_status', Company::REGISTRATION_ACTIVE)
+                ->where('is_active', true)
+                ->count();
+            $totalTenants = Company::query()->count();
+            $pendingApprovals = AdminApprovalRequest::query()
+                ->where('status', AdminApprovalRequest::STATUS_PENDING)
+                ->count();
+
+            return response()->json([
+                'platform_overview' => true,
+                'privacy_note' => 'Tenant complaints, customer identities, and per-organization analytics are only visible to that organization’s administrators and users.',
+                'organizations' => [
+                    'total' => $totalTenants,
+                    'active_tenants' => $activeTenants,
+                    'pending_registration' => $pendingReg,
+                    'rejected_registration' => $rejectedReg,
+                ],
+                'pending_approval_requests' => $pendingApprovals,
+                'plan' => [
+                    'is_premium' => $user->hasPremiumFeatures(),
+                    'effective_access_tier' => $user->computeEffectiveAccessTier(),
+                    'user_access_tier' => $user->access_tier,
+                    'subscription' => $user->company?->subscription ?? 'platform',
+                ],
+            ]);
+        }
+
+        if ($user->role === 'admin') {
             $complaints = Complaint::where('company_id', $user->company_id);
             $clusterQuery = IssueCluster::where('company_id', $user->company_id)->withCount('complaints');
         } else {
@@ -93,7 +123,7 @@ class DashboardController extends Controller
                 'is_premium' => $isPremium,
                 'effective_access_tier' => $user->computeEffectiveAccessTier(),
                 'user_access_tier' => $user->access_tier,
-                'subscription' => $user->company?->subscription ?? ($user->role === 'super_admin' ? 'platform' : 'free'),
+                'subscription' => $user->company?->subscription ?? 'free',
             ],
             'status' => [
                 'open' => $open,

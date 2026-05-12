@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { useParams, Link, Navigate } from "react-router-dom";
 import {
   LineChart,
   Line,
@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
+import { getStoredUser } from "../lib/auth";
 
 const TABS = [
   { id: "diagnosis", label: "Diagnosis" },
@@ -24,8 +25,14 @@ function IssueDiagnosis() {
   const [timeline, setTimeline] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const me = useMemo(() => getStoredUser(), []);
+
   useEffect(() => {
     if (!id) return;
+    if (getStoredUser()?.role === "super_admin") {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -52,6 +59,10 @@ function IssueDiagnosis() {
       cancelled = true;
     };
   }, [id]);
+
+  if (me?.role === "super_admin") {
+    return <Navigate to="/" replace />;
+  }
 
   if (loading || !diagnosis) {
     return (

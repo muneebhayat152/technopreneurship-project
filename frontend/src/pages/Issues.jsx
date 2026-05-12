@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 import { Layers, Lock } from "lucide-react";
@@ -9,32 +9,14 @@ function Issues() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [premiumLocked, setPremiumLocked] = useState(false);
-  const [companies, setCompanies] = useState([]);
-  const [companyFilter, setCompanyFilter] = useState("");
 
   const me = useMemo(() => getStoredUser(), []);
-  const isSuperAdmin = me?.role === "super_admin";
-
-  const loadCompanies = useCallback(async () => {
-    if (!isSuperAdmin) return;
-    try {
-      const { data } = await api.get("/companies");
-      setCompanies(data.companies || []);
-    } catch {
-      toast.error("Could not load organizations for filter.");
-    }
-  }, [isSuperAdmin]);
 
   const loadIssues = useCallback(async () => {
     setLoading(true);
     try {
       setPremiumLocked(false);
-      const params = new URLSearchParams();
-      if (isSuperAdmin && companyFilter) {
-        params.set("company_id", companyFilter);
-      }
-      const qs = params.toString();
-      const { data } = await api.get(`/issues${qs ? `?${qs}` : ""}`);
+      const { data } = await api.get("/issues");
       setIssues(data.issues || []);
     } catch (e) {
       if (e.response?.status === 402) {
@@ -46,17 +28,7 @@ function Issues() {
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin, companyFilter]);
-
-  useEffect(() => {
-    if (isSuperAdmin) {
-      const t = setTimeout(() => {
-        loadCompanies();
-      }, 0);
-      return () => clearTimeout(t);
-    }
-    return undefined;
-  }, [isSuperAdmin, loadCompanies]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +40,10 @@ function Issues() {
       cancelled = true;
     };
   }, [loadIssues]);
+
+  if (me?.role === "super_admin") {
+    return <Navigate to="/" replace />;
+  }
 
   if (loading) {
     return (
@@ -87,8 +63,8 @@ function Issues() {
           Issue patterns
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          Premium analytics requires Premium access. A platform or organization administrator can set your plan to
-          Premium (for you personally or for the whole organization) under Users.
+          Premium analytics requires Premium access. Your organization administrator can assign Free or Premium per user
+          or upgrade the organization plan.
         </p>
       </div>
     );
@@ -105,37 +81,14 @@ function Issues() {
             Issue patterns
           </h1>
           <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-            Clusters ranked by volume, severity, and extracted keywords.
+            Grouped complaint themes for your organization (Premium).
           </p>
-          {isSuperAdmin && (
-            <div className="mt-4 max-w-md">
-              <label
-                htmlFor="issues-company-filter"
-                className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-              >
-                Organization (platform view)
-              </label>
-              <select
-                id="issues-company-filter"
-                className="input w-full"
-                value={companyFilter}
-                onChange={(e) => setCompanyFilter(e.target.value)}
-              >
-                <option value="">All organizations</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
       </div>
 
       {issues.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-8 py-14 text-center text-sm leading-relaxed text-slate-600 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-400">
-          No patterns yet. Add complaints to generate clusters.
+          <p>No patterns yet. Add a few complaints (similar wording helps grouping), then check again.</p>
         </div>
       ) : (
         <ul className="space-y-4">

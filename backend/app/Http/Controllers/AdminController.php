@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Services\AuditLogger;
+use App\Jobs\ReclusterCompanyJob;
 use App\Models\AdminApprovalRequest;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Company;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -13,16 +16,17 @@ use Illuminate\Validation\Rule;
 class AdminController extends Controller
 {
     /**
-     * 🔐 Check admin access
+     * Organization administrators manage users and per-user Free/Premium for their tenant only.
      */
-    private function checkAdmin($user)
+    private function requireOrgAdmin($user)
     {
-        if (!$user || !in_array($user->role, ['admin', 'super_admin'])) {
+        if (! $user || $user->role !== 'admin' || ! $user->company_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized'
+                'message' => 'Only organization administrators can manage users and access tiers for their organization.',
             ], 403);
         }
+
         return null;
     }
 
@@ -33,24 +37,16 @@ class AdminController extends Controller
     {
         $admin = $request->user();
 
-        if ($response = $this->checkAdmin($admin)) return $response;
+        if ($response = $this->requireOrgAdmin($admin)) {
+            return $response;
+        }
 
         try {
-            // 🔥 SUPER ADMIN → ALL USERS (INCLUDING DELETED)
-            if ($admin->role === 'super_admin') {
-                $users = User::with('company')
-                    ->withTrashed()
-                    ->latest()
-                    ->get();
-            } 
-            // 🔒 ADMIN → ONLY COMPANY USERS
-            else {
-                $users = User::with('company')
-                    ->withTrashed()
-                    ->where('company_id', $admin->company_id)
-                    ->latest()
-                    ->get();
-            }
+            $users = User::with('company')
+                ->withTrashed()
+                ->where('company_id', $admin->company_id)
+                ->latest()
+                ->get();
 
             return response()->json([
                 'success' => true,
@@ -77,31 +73,17 @@ class AdminController extends Controller
     {
         $admin = $request->user();
 
-        if ($response = $this->checkAdmin($admin)) return $response;
-
-        $roleRule = $admin->role === 'super_admin'
-            ? 'required|in:super_admin,admin,user'
-            : 'required|in:user';
+        if ($response = $this->requireOrgAdmin($admin)) {
+            return $response;
+        }
 
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6',
-            'role' => $roleRule,
-            'company_id' => 'nullable|exists:companies,id',
+            'role' => 'required|in:user',
             'access_tier' => 'nullable|in:free,premium',
         ]);
-
-        $companyId = $admin->role === 'super_admin'
-            ? ($request->input('company_id') ?: $admin->company_id)
-            : $admin->company_id;
-
-        if (! $companyId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'company_id is required when creating users as super admin',
-            ], 422);
-        }
 
         $accessTier = $request->input('access_tier');
 
@@ -109,7 +91,7 @@ class AdminController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'company_id' => $companyId,
+            'company_id' => $admin->company_id,
             'role' => $request->role,
             'access_tier' => $accessTier ?: null,
         ]);
@@ -128,17 +110,14 @@ class AdminController extends Controller
     {
         $admin = $request->user();
 
-        if ($response = $this->checkAdmin($admin)) return $response;
-
-        // 🔥 INCLUDE DELETED USERS
-        if ($admin->role === 'super_admin') {
-            $user = User::withTrashed()->find($id);
-        } else {
-            $user = User::withTrashed()
-                ->where('company_id', $admin->company_id)
-                ->where('id', $id)
-                ->first();
+        if ($response = $this->requireOrgAdmin($admin)) {
+            return $response;
         }
+
+        $user = User::withTrashed()
+            ->where('company_id', $admin->company_id)
+            ->where('id', $id)
+            ->first();
 
         if (!$user) {
             return response()->json([
@@ -147,11 +126,9 @@ class AdminController extends Controller
             ], 404);
         }
 
-        $allowedRoles = $admin->role === 'super_admin'
-            ? ['super_admin', 'admin', 'user']
-            : ($user->role === 'admin'
-                ? ['admin']
-                : ['user']);
+        $allowedRoles = $user->role === 'admin'
+            ? ['admin']
+            : ['user'];
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -162,12 +139,6 @@ class AdminController extends Controller
         ]);
 
         if ($request->has('access_tier')) {
-            if ($user->role === 'super_admin' && $admin->role !== 'super_admin') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Only platform super administrators may change plan access for platform administrators.',
-                ], 403);
-            }
             $raw = $request->input('access_tier');
             $user->access_tier = ($raw === '' || $raw === null) ? null : $raw;
         }
@@ -196,15 +167,13 @@ class AdminController extends Controller
     {
         $admin = $request->user();
 
-        if ($response = $this->checkAdmin($admin)) return $response;
-
-        if ($admin->role === 'super_admin') {
-            $user = User::find($id);
-        } else {
-            $user = User::where('company_id', $admin->company_id)
-                ->where('id', $id)
-                ->first();
+        if ($response = $this->requireOrgAdmin($admin)) {
+            return $response;
         }
+
+        $user = User::where('company_id', $admin->company_id)
+            ->where('id', $id)
+            ->first();
 
         if (!$user) {
             return response()->json([
@@ -220,67 +189,44 @@ class AdminController extends Controller
             ], 400);
         }
 
-        if ($admin->role !== 'super_admin') {
-            if (! $admin->company_id || (int) $user->company_id !== (int) $admin->company_id) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-            }
-
-            $dup = AdminApprovalRequest::query()
-                ->where('company_id', $admin->company_id)
-                ->where('type', 'user_delete')
-                ->where('status', AdminApprovalRequest::STATUS_PENDING)
-                ->where('payload->target_user_id', $user->id)
-                ->exists();
-
-            if ($dup) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'A removal request for this user is already pending super administrator approval.',
-                ], 422);
-            }
-
-            $row = AdminApprovalRequest::create([
-                'company_id' => (int) $admin->company_id,
-                'requester_id' => $admin->id,
-                'type' => 'user_delete',
-                'payload' => ['target_user_id' => $user->id],
-                'status' => AdminApprovalRequest::STATUS_PENDING,
-            ]);
-
-            AuditLogger::record($request, $admin, 'admin_approval.submitted', 'admin_approval_request', (int) $row->id, [
-                'type' => 'user_delete',
-                'company_id' => $admin->company_id,
-                'target_user_id' => $user->id,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'pending' => true,
-                'message' => 'Removal submitted for platform super administrator approval. The account stays active until approved.',
-                'request_id' => $row->id,
-            ], 202);
+        if (! $admin->company_id || (int) $user->company_id !== (int) $admin->company_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $user->delete(); // ✅ SOFT DELETE
+        $dup = AdminApprovalRequest::query()
+            ->where('company_id', $admin->company_id)
+            ->where('type', 'user_delete')
+            ->where('status', AdminApprovalRequest::STATUS_PENDING)
+            ->where('payload->target_user_id', $user->id)
+            ->exists();
 
-        AuditLogger::record(
-            $request,
-            $admin,
-            'user.soft_deleted',
-            'user',
-            (int) $user->id,
-            [
-                'target_email' => $user->email,
-                'target_name' => $user->name,
-                'target_role' => $user->role,
-                'company_id' => $user->company_id,
-            ]
-        );
+        if ($dup) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A removal request for this user is already pending super administrator approval.',
+            ], 422);
+        }
+
+        $row = AdminApprovalRequest::create([
+            'company_id' => (int) $admin->company_id,
+            'requester_id' => $admin->id,
+            'type' => 'user_delete',
+            'payload' => ['target_user_id' => $user->id],
+            'status' => AdminApprovalRequest::STATUS_PENDING,
+        ]);
+
+        AuditLogger::record($request, $admin, 'admin_approval.submitted', 'admin_approval_request', (int) $row->id, [
+            'type' => 'user_delete',
+            'company_id' => $admin->company_id,
+            'target_user_id' => $user->id,
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'User deleted successfully'
-        ]);
+            'pending' => true,
+            'message' => 'Removal submitted for platform super administrator approval. The account stays active until approved.',
+            'request_id' => $row->id,
+        ], 202);
     }
 
     /**
@@ -290,16 +236,14 @@ class AdminController extends Controller
     {
         $admin = $request->user();
 
-        if ($response = $this->checkAdmin($admin)) return $response;
-
-        if ($admin->role === 'super_admin') {
-            $user = User::withTrashed()->find($id);
-        } else {
-            $user = User::withTrashed()
-                ->where('company_id', $admin->company_id)
-                ->where('id', $id)
-                ->first();
+        if ($response = $this->requireOrgAdmin($admin)) {
+            return $response;
         }
+
+        $user = User::withTrashed()
+            ->where('company_id', $admin->company_id)
+            ->where('id', $id)
+            ->first();
 
         if (!$user) {
             return response()->json([
@@ -314,6 +258,30 @@ class AdminController extends Controller
             'success' => true,
             'message' => 'User restored successfully',
             'user' => $user
+        ]);
+    }
+
+    /**
+     * Super admin: rebuild issue clusters + alerts for every organization (demo / recovery).
+     */
+    public function reclusterAllTenants(Request $request)
+    {
+        $admin = $request->user();
+        if (! $admin || $admin->role !== 'super_admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $ids = Company::query()->orderBy('id')->pluck('id');
+        $n = 0;
+        foreach ($ids as $id) {
+            Bus::dispatchSync(new ReclusterCompanyJob((int) $id));
+            $n++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Rebuilt patterns and alerts for {$n} organization(s).",
+            'companies_processed' => $n,
         ]);
     }
 }

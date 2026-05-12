@@ -168,7 +168,7 @@ class AdminApprovalRequestTest extends TestCase
         Notification::assertSentTo($tenantAdmin, AdminApprovalDecisionAlert::class);
     }
 
-    public function test_super_admin_applies_complaint_status_without_queue(): void
+    public function test_super_admin_cannot_apply_complaint_status_directly(): void
     {
         $company = Company::create([
             'name' => 'Delta Co',
@@ -207,9 +207,9 @@ class AdminApprovalRequestTest extends TestCase
 
         $this->putJson("/api/complaints/{$complaint->id}/status", [
             'status' => 'resolved',
-        ])->assertOk();
+        ])->assertStatus(403);
 
-        $this->assertSame('resolved', $complaint->fresh()->status);
+        $this->assertSame('open', $complaint->fresh()->status);
         $this->assertSame(0, AdminApprovalRequest::query()->count());
     }
 }

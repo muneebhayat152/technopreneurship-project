@@ -29,12 +29,10 @@ function AdminUsers() {
   const [editUser, setEditUser] = useState(null);
 
   const [me, setMe] = useState(null);
-  const [companies, setCompanies] = useState([]);
-  const [companyId, setCompanyId] = useState("");
 
   const canAccess = useMemo(() => {
     const r = getStoredUser().role;
-    return r === "admin" || r === "super_admin";
+    return r === "admin";
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -75,10 +73,6 @@ function AdminUsers() {
       try {
         const r = await api.get("/user");
         setMe(r.data.user);
-        if (r.data.user?.role === "super_admin") {
-          const c = await api.get("/companies");
-          setCompanies(c.data.companies || []);
-        }
       } catch {
         /* ignore */
       }
@@ -107,18 +101,10 @@ function AdminUsers() {
       return;
     }
 
-    if (me?.role === "super_admin" && !companyId) {
-      toast.error("Select an organization.");
-      return;
-    }
-
     try {
       setActionLoading("create");
 
       const payload = { name, email, password, role };
-      if (me?.role === "super_admin") {
-        payload.company_id = Number(companyId);
-      }
       if (createAccessTier === "free" || createAccessTier === "premium") {
         payload.access_tier = createAccessTier;
       }
@@ -131,7 +117,6 @@ function AdminUsers() {
       setEmail("");
       setPassword("");
       setRole("user");
-      setCompanyId("");
       setCreateAccessTier("");
 
       fetchUsers();
@@ -151,9 +136,7 @@ function AdminUsers() {
         email: editUser.email,
         role: editUser.role,
       };
-      const canSetTier =
-        me?.role === "super_admin" ||
-        (me?.role === "admin" && editUser.role !== "super_admin");
+      const canSetTier = me?.role === "admin" && editUser.role !== "super_admin";
       if (canSetTier) {
         body.access_tier = editUser.access_tier === "" ? null : editUser.access_tier;
       }
@@ -181,9 +164,7 @@ function AdminUsers() {
 
   const deleteUser = async (id) => {
     const msg =
-      me?.role === "super_admin"
-        ? "Remove this user from the directory?"
-        : "Submit a removal request? The account stays active until the platform super administrator approves.";
+      "Submit a removal request? The account stays active until the platform super administrator approves.";
     if (!window.confirm(msg)) return;
 
     try {
@@ -245,9 +226,8 @@ function AdminUsers() {
             Users
           </h1>
           <p className="mt-1 max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-            {me?.role === "super_admin"
-              ? "Assign roles and set Free or Premium access per user (overrides organization plan), or change organization plans under Organizations."
-              : "Manage people in your organization. Assign Premium or Free access per user. Sensitive removals or promoting admins may still require platform approval."}
+            Manage people in your organization. Assign Premium or Free access per user. Sensitive removals or promoting
+            admins may still require platform approval.
           </p>
         </div>
       </div>
@@ -298,32 +278,8 @@ function AdminUsers() {
               className="input mt-2"
             >
               <option value="user">Customer</option>
-              {me?.role === "super_admin" && (
-                <>
-                  <option value="admin">Organization admin</option>
-                  <option value="super_admin">Platform super admin</option>
-                </>
-              )}
             </select>
           </div>
-
-          {me?.role === "super_admin" && (
-            <div className="sm:col-span-2 lg:col-span-2">
-              <label className="label">Organization</label>
-              <select
-                value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
-                className="input mt-2"
-              >
-                <option value="">Select organization…</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} (#{c.id})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           <div className="sm:col-span-2 lg:col-span-2">
             <label className="label">Access tier (personal)</label>
@@ -384,19 +340,7 @@ function AdminUsers() {
 
             <div>
               <label className="label">Role</label>
-              {me?.role === "super_admin" ? (
-                <select
-                  className="input mt-2"
-                  value={editUser.role}
-                  onChange={(e) =>
-                    setEditUser({ ...editUser, role: e.target.value })
-                  }
-                >
-                  <option value="user">Customer</option>
-                  <option value="admin">Organization admin</option>
-                  <option value="super_admin">Platform super admin</option>
-                </select>
-              ) : editUser.role === "admin" ? (
+              {editUser.role === "admin" ? (
                 <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
                   {editUser.id === me?.id
                     ? "You are signed in as an organization administrator. Your role is fixed here; only a platform super administrator can change it."
@@ -410,8 +354,7 @@ function AdminUsers() {
               )}
             </div>
 
-            {(me?.role === "super_admin" ||
-              (me?.role === "admin" && editUser.role !== "super_admin")) && (
+            {me?.role === "admin" && editUser.role !== "super_admin" && (
               <div className="sm:col-span-2 lg:col-span-3">
                 <label className="label">Access tier (personal)</label>
                 <select

@@ -85,6 +85,112 @@ function Dashboard() {
     );
   }
 
+  if (data.platform_overview) {
+    const org = data.organizations || {};
+    const isPremium = data.plan?.is_premium === true;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 dark:from-slate-950 dark:to-slate-900">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                Platform
+              </p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                Organizations overview
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                Welcome back,{" "}
+                <span className="font-medium text-slate-800 dark:text-slate-200">
+                  {user?.name}
+                </span>
+                . Signed in as {roleLabel(user?.role)} ·{" "}
+                <span
+                  className={
+                    isPremium
+                      ? "font-medium text-emerald-600 dark:text-emerald-400"
+                      : "font-medium text-slate-600 dark:text-slate-400"
+                  }
+                >
+                  {isPremium ? "Premium" : "Free"}
+                </span>{" "}
+                for platform tools.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  to="/companies"
+                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                >
+                  Organizations
+                </Link>
+                <Link
+                  to="/approvals"
+                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                >
+                  Approval queue
+                </Link>
+                <Link
+                  to="/platform/audit-log"
+                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                >
+                  Audit log
+                </Link>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            >
+              Sign out
+            </button>
+          </div>
+
+          {data.privacy_note && (
+            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-relaxed text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+              {data.privacy_note}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-2xl bg-slate-900 p-5 text-white shadow dark:ring-1 dark:ring-white/10">
+              <p className="text-sm text-slate-400">Organizations</p>
+              <p className="mt-1 text-3xl font-bold">{org.total ?? 0}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/40">
+              <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">Active tenants</p>
+              <p className="mt-1 text-3xl font-bold text-emerald-950 dark:text-emerald-50">
+                {org.active_tenants ?? 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/40">
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Pending registration</p>
+              <p className="mt-1 text-3xl font-bold text-amber-950 dark:text-amber-50">
+                {org.pending_registration ?? 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Rejected registration</p>
+              <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">
+                {org.rejected_registration ?? 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm dark:border-indigo-900/50 dark:bg-indigo-950/40">
+              <p className="text-sm font-medium text-indigo-900 dark:text-indigo-200">Pending approvals</p>
+              <p className="mt-1 text-3xl font-bold text-indigo-950 dark:text-indigo-50">
+                {data.pending_approval_requests ?? 0}
+              </p>
+              <p className="mt-1 text-xs text-indigo-800/80 dark:text-indigo-300/90">
+                Subscription, status changes, and similar requests from org admins
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isPremium = data.plan?.is_premium === true;
 
   const statusData = [

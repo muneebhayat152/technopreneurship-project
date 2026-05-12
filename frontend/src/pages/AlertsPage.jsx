@@ -1,16 +1,20 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 import { Bell, Lock } from "lucide-react";
+import { getStoredUser } from "../lib/auth";
 
 function AlertsPage() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [premiumLocked, setPremiumLocked] = useState(false);
 
-  const load = async () => {
+  const me = useMemo(() => getStoredUser(), []);
+
+  const load = useCallback(async () => {
     try {
       setPremiumLocked(false);
       const { data } = await api.get("/alerts");
@@ -25,11 +29,12 @@ function AlertsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    setLoading(true);
     load();
-  }, []);
+  }, [load]);
 
   const markRead = async (id) => {
     try {
@@ -39,6 +44,10 @@ function AlertsPage() {
       toast.error("Could not update alert.");
     }
   };
+
+  if (me?.role === "super_admin") {
+    return <Navigate to="/" replace />;
+  }
 
   if (loading) {
     return (
@@ -58,8 +67,8 @@ function AlertsPage() {
           Smart alerts
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          Smart alerts require Premium access. Ask a platform or organization administrator to assign Premium to your
-          account or upgrade the organization under Users → Access tier.
+          Smart alerts require Premium access. Your organization administrator can assign Free or Premium per user or
+          upgrade the organization plan.
         </p>
       </div>
     );
@@ -83,7 +92,7 @@ function AlertsPage() {
 
       {alerts.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center text-sm leading-relaxed text-slate-600 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-400">
-          No active alerts. Signals appear when monitoring thresholds are met.
+          <p>No active alerts. Signals appear after clustering runs on complaints in your organization.</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -100,6 +109,11 @@ function AlertsPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
+                  {a.company?.name && (
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {a.company.name}
+                    </p>
+                  )}
                   <p className="font-semibold text-slate-900 dark:text-white">
                     {a.title}
                   </p>

@@ -10,12 +10,21 @@ use Illuminate\Http\Request;
 
 class IssuesController extends Controller
 {
+    private function forbidTenantInsights(Request $request): ?\Illuminate\Http\JsonResponse
+    {
+        if ($request->user()->role === 'super_admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Platform administrators manage organizations only. Issue patterns, alerts, and complaint analytics are available to each organization’s own administrators.',
+            ], 403);
+        }
+
+        return null;
+    }
+
     private function complaintScope(Request $request)
     {
         $user = $request->user();
-        if ($user->role === 'super_admin') {
-            return Complaint::query();
-        }
         if ($user->role === 'admin') {
             return Complaint::where('company_id', $user->company_id);
         }
@@ -26,9 +35,6 @@ class IssuesController extends Controller
     private function clusterScope(Request $request)
     {
         $user = $request->user();
-        if ($user->role === 'super_admin') {
-            return IssueCluster::query();
-        }
 
         return IssueCluster::where('company_id', $user->company_id);
     }
@@ -38,16 +44,17 @@ class IssuesController extends Controller
      */
     public function index(Request $request)
     {
+        if ($r = $this->forbidTenantInsights($request)) {
+            return $r;
+        }
+
         $query = $this->clusterScope($request)
             ->with('company:id,name')
             ->withCount('complaints')
             ->orderByDesc('complaint_count');
 
-        if ($request->filled('company_id') && $request->user()->role === 'super_admin') {
-            $query->where('company_id', (int) $request->company_id);
-        }
-
-        $clusters = $query->limit(60)->get()->map(function (IssueCluster $c) {
+        $limit = 60;
+        $clusters = $query->limit($limit)->get()->map(function (IssueCluster $c) {
             return [
                 'id' => $c->id,
                 'company_id' => $c->company_id,
@@ -68,6 +75,10 @@ class IssuesController extends Controller
      */
     public function diagnosis(Request $request, string|int $id)
     {
+        if ($r = $this->forbidTenantInsights($request)) {
+            return $r;
+        }
+
         $cluster = $this->clusterScope($request)->where('id', $id)->firstOrFail();
 
         $complaints = Complaint::where('issue_cluster_id', $id)->with('user:id,name')->latest()->limit(12)->get();
@@ -121,6 +132,10 @@ class IssuesController extends Controller
      */
     public function timeline(Request $request, string|int $id)
     {
+        if ($r = $this->forbidTenantInsights($request)) {
+            return $r;
+        }
+
         $cluster = $this->clusterScope($request)->where('id', $id)->firstOrFail();
 
         $series = IssueTimeseries::where('issue_cluster_id', $id)->orderBy('bucket_date')->get();
@@ -184,16 +199,18 @@ class IssuesController extends Controller
      */
     public function alerts(Request $request)
     {
-        $user = $request->user();
-        $q = Alert::query()->orderByDesc('triggered_at')->limit(50);
-
-        if ($user->role === 'super_admin') {
-            if ($request->filled('company_id')) {
-                $q->where('company_id', (int) $request->company_id);
-            }
-        } else {
-            $q->where('company_id', $user->company_id);
+        if ($r = $this->forbidTenantInsights($request)) {
+            return $r;
         }
+
+        $user = $request->user();
+        $limit = 50;
+
+        $q = Alert::query()
+            ->with(['company:id,name'])
+            ->orderByDesc('triggered_at')
+            ->limit($limit)
+            ->where('company_id', $user->company_id);
 
         return response()->json([
             'success' => true,
@@ -206,9 +223,13 @@ class IssuesController extends Controller
      */
     public function markAlertRead(Request $request, string|int $id)
     {
+        if ($r = $this->forbidTenantInsights($request)) {
+            return $r;
+        }
+
         $user = $request->user();
         $alert = Alert::findOrFail($id);
-        if ($user->role !== 'super_admin' && (int) $alert->company_id !== (int) $user->company_id) {
+        if ((int) $alert->company_id !== (int) $user->company_id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
         $alert->is_read = true;

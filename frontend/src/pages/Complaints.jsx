@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { api } from "../lib/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import {
   complaintStatusLabel,
   sentimentLabel,
@@ -27,7 +27,7 @@ function Complaints() {
 
   const role = storedUser.role || "user";
   const userId = storedUser.id;
-  const canManageStatus = role === "admin" || role === "super_admin";
+  const canManageStatus = role === "admin";
 
   const handleLogout = useCallback(async () => {
     try {
@@ -74,6 +74,10 @@ function Complaints() {
       window.removeEventListener("storage", handleStorage);
     };
   }, [fetchComplaints, navigate]);
+
+  if (storedUser?.role === "super_admin") {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSubmit = async () => {
     if (!text.trim()) {
