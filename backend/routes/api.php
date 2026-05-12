@@ -122,6 +122,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/', [CompanyController::class, 'index']);              // Get all companies (super admin)
         Route::post('/{id}/toggle', [CompanyController::class, 'toggleStatus']); // Activate/Deactivate
         Route::put('/{id}/subscription', [CompanyController::class, 'updateSubscription']);
+        Route::delete('/{id}', [CompanyController::class, 'destroy']);    // Remove tenant (super admin)
     });
 
     /*

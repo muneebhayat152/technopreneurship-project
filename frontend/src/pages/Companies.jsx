@@ -37,8 +37,8 @@ function Companies() {
       await api.post(`/companies/${id}/toggle`, {});
       fetchCompanies();
       toast.success("Organization status updated.");
-    } catch {
-      toast.error("Update failed.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Update failed.");
     }
   };
 
@@ -49,8 +49,25 @@ function Companies() {
       toast.success(
         `Plan set to ${subscription === "premium" ? "Premium" : "Free"}.`
       );
-    } catch {
-      toast.error("Could not update plan.");
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+          "Could not update plan. Only platform super administrators can change plans directly."
+      );
+    }
+  };
+
+  const deleteOrganization = async (c) => {
+    const ok = window.confirm(
+      `Permanently delete organization "${c.name}" (${c.email})? All users and complaints for this tenant will be removed.`
+    );
+    if (!ok) return;
+    try {
+      await api.delete(`/companies/${c.id}`);
+      fetchCompanies();
+      toast.success("Organization deleted.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not delete organization.");
     }
   };
 
@@ -61,7 +78,8 @@ function Companies() {
           Organizations
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          Tenant activation and subscription plans across the platform.
+          As platform super administrator you can activate tenants, set Free or Premium directly,
+          or permanently delete an organization (except the reserved owners tenant).
         </p>
       </div>
 
@@ -145,6 +163,13 @@ function Companies() {
                       className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
                     >
                       Premium
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteOrganization(c)}
+                      className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
+                    >
+                      Delete org
                     </button>
                   </div>
                 </td>

@@ -5,9 +5,13 @@ namespace App\Http\Controllers;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use App\Models\Company;
+use App\Models\User;
 
 class CompanyController extends Controller
 {
+    /** Must match PlatformOwnersSeeder platform tenant email — cannot delete from UI. */
+    private const RESERVED_OWNER_TENANT_EMAIL = 'owners@ai-complaint-doctor.platform';
+
     /**
      * 🔐 Check Super Admin
      */
@@ -117,6 +121,56 @@ class CompanyController extends Controller
             'success' => true,
             'message' => 'Subscription updated',
             'company' => $company,
+        ]);
+    }
+
+    /**
+     * Permanently remove a tenant and cascaded data (super admin only).
+     * Cannot delete the reserved platform owners organization.
+     */
+    public function destroy(Request $request, string|int $id)
+    {
+        if ($response = $this->checkSuperAdmin($request->user())) {
+            return $response;
+        }
+
+        $company = Company::findOrFail((int) $id);
+
+        if (strtolower($company->email) === strtolower(self::RESERVED_OWNER_TENANT_EMAIL)) {
+            return response()->json([
+                'message' => 'This reserved platform organization cannot be deleted.',
+            ], 422);
+        }
+
+        if (User::query()
+            ->where('company_id', $company->id)
+            ->where('role', 'super_admin')
+            ->exists()
+        ) {
+            return response()->json([
+                'message' => 'Cannot delete an organization that still has platform super administrators. Reassign those users first.',
+            ], 422);
+        }
+
+        $snapshot = [
+            'company_name' => $company->name,
+            'company_email' => $company->email,
+        ];
+
+        $company->delete();
+
+        AuditLogger::record(
+            $request,
+            $request->user(),
+            'company.deleted',
+            'company',
+            (int) $id,
+            $snapshot
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Organization deleted.',
         ]);
     }
 }
