@@ -19,5 +19,5 @@ RUN composer dump-autoload --optimize
 ENV PORT=8080
 EXPOSE 8080
 
-# Fallback if Railway overrides CMD — migrations run via railway.json startCommand
-CMD sh -c "php artisan migrate --force && php -S 0.0.0.0:${PORT} -t public"
+# php -S -t public does NOT rewrite URLs to index.php → /api returns 404. Use artisan serve.
+CMD sh -c "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT}"
