@@ -8,11 +8,18 @@ use App\Models\Complaint;
 use App\Models\User;
 use App\Services\ApprovalRequestNotifier;
 use App\Services\AuditLogger;
+use App\Services\ComplaintSentimentAnalyzer;
+use App\Services\PlatformActivityNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ComplaintController extends Controller
 {
+    public function __construct(
+        private ComplaintSentimentAnalyzer $sentimentAnalyzer
+    ) {}
+
     private function queueRecluster(?int $companyId): void
     {
         if (! $companyId) {
@@ -36,50 +43,39 @@ class ComplaintController extends Controller
             ], 422);
         }
 
-        $text = strtolower($request->complaint_text);
-
-        $sentiment = 'neutral';
-        if (
-            str_contains($text, 'bad') ||
-            str_contains($text, 'slow') ||
-            str_contains($text, 'late') ||
-            str_contains($text, 'poor') ||
-            str_contains($text, 'worst')
-        ) {
-            $sentiment = 'negative';
-        } elseif (
-            str_contains($text, 'good') ||
-            str_contains($text, 'excellent') ||
-            str_contains($text, 'fast') ||
-            str_contains($text, 'great')
-        ) {
-            $sentiment = 'positive';
-        }
-
-        $category = 'general';
-        if (str_contains($text, 'delivery') || str_contains($text, 'late')) {
-            $category = 'delivery';
-        } elseif (str_contains($text, 'payment') || str_contains($text, 'refund')) {
-            $category = 'payment';
-        } elseif (str_contains($text, 'service') || str_contains($text, 'support')) {
-            $category = 'service';
-        }
+        $analysis = $this->sentimentAnalyzer->analyze($request->complaint_text);
+        $sentiment = $analysis['sentiment'];
 
         $complaint = Complaint::create([
             'company_id' => $user->company_id,
             'user_id' => $user->id,
             'complaint_text' => $request->complaint_text,
             'sentiment' => $sentiment,
-            'category' => $category,
+            'sentiment_score' => $analysis['sentiment_score'],
+            'category' => $analysis['category'],
             'status' => 'open',
             'priority' => $sentiment === 'negative' ? 'high' : 'medium',
         ]);
 
         $this->queueRecluster((int) $user->company_id);
 
+        try {
+            PlatformActivityNotifier::notifyComplaintSubmitted($complaint->fresh());
+        } catch (\Throwable $e) {
+            Log::warning('complaint_notify_failed', [
+                'complaint_id' => $complaint->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'message' => 'Complaint created successfully',
             'complaint' => $complaint->fresh(),
+            'sentiment_analysis' => [
+                'label' => $analysis['sentiment'],
+                'score' => $analysis['sentiment_score'],
+                'category' => $analysis['category'],
+            ],
         ], 201);
     }
 
@@ -271,38 +267,14 @@ class ComplaintController extends Controller
             ], 403);
         }
 
-        $text = strtolower($request->complaint_text);
-        $sentiment = 'neutral';
-        if (
-            str_contains($text, 'bad') ||
-            str_contains($text, 'slow') ||
-            str_contains($text, 'late') ||
-            str_contains($text, 'poor') ||
-            str_contains($text, 'worst')
-        ) {
-            $sentiment = 'negative';
-        } elseif (
-            str_contains($text, 'good') ||
-            str_contains($text, 'excellent') ||
-            str_contains($text, 'fast') ||
-            str_contains($text, 'great')
-        ) {
-            $sentiment = 'positive';
-        }
-
-        $category = 'general';
-        if (str_contains($text, 'delivery') || str_contains($text, 'late')) {
-            $category = 'delivery';
-        } elseif (str_contains($text, 'payment') || str_contains($text, 'refund')) {
-            $category = 'payment';
-        } elseif (str_contains($text, 'service') || str_contains($text, 'support')) {
-            $category = 'service';
-        }
+        $analysis = $this->sentimentAnalyzer->analyze($request->complaint_text);
+        $sentiment = $analysis['sentiment'];
 
         $complaint->update([
             'complaint_text' => $request->complaint_text,
             'sentiment' => $sentiment,
-            'category' => $category,
+            'sentiment_score' => $analysis['sentiment_score'],
+            'category' => $analysis['category'],
             'priority' => $sentiment === 'negative' ? 'high' : $complaint->priority,
         ]);
 
@@ -311,6 +283,11 @@ class ComplaintController extends Controller
         return response()->json([
             'message' => 'Complaint updated',
             'complaint' => $complaint->fresh(),
+            'sentiment_analysis' => [
+                'label' => $analysis['sentiment'],
+                'score' => $analysis['sentiment_score'],
+                'category' => $analysis['category'],
+            ],
         ]);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Company;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\PlatformActivityNotifier;
 
 class AuthController extends Controller
 {
@@ -83,6 +84,15 @@ class AuthController extends Controller
             $token = $this->issueToken($user);
 
             DB::commit();
+
+            try {
+                PlatformActivityNotifier::notifyNewOrganization($company, $user);
+            } catch (\Throwable $e) {
+                Log::warning('tenant_register_notify_failed', [
+                    'company_id' => $company->id,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'success' => true,

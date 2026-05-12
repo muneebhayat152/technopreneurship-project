@@ -19,12 +19,17 @@ class Complaint extends Model
         'user_id',
         'complaint_text',
         'sentiment',
+        'sentiment_score',
         'category',
         'status',
         'priority',
         'issue_cluster_id',
         'created_at',
         'updated_at',
+    ];
+
+    protected $casts = [
+        'sentiment_score' => 'float',
     ];
 
     /**
