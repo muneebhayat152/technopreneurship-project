@@ -78,8 +78,8 @@ function Companies() {
           Organizations
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          As platform super administrator you can activate tenants, set Free or Premium directly,
-          or permanently delete an organization (except the reserved owners tenant).
+          Platform super administrators have full control: activate tenants, set Free or Premium,
+          or permanently delete any organization (including tenants with super administrators).
         </p>
       </div>
 

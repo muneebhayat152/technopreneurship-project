@@ -15,8 +15,8 @@ use Illuminate\Database\Seeder;
  */
 class PlatformOwnersSeeder extends Seeder
 {
-    /** Distinct from tenant sign-ups — reserved platform tenant email. */
-    private const PLATFORM_COMPANY_EMAIL = 'owners@ai-complaint-doctor.platform';
+    /** Distinct from tenant sign-ups — platform tenant contact email. */
+    private const PLATFORM_COMPANY_EMAIL = 'owner@aicomplaintdoctor.platform';
 
     public function run(): void
     {
