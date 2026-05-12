@@ -6,7 +6,14 @@ import toast from "react-hot-toast";
 import { api } from "../lib/api";
 import { Users } from "lucide-react";
 import { roleLabel } from "../lib/format";
-import { clearSession, getStoredUser, isAuthenticated } from "../lib/auth";
+import { clearSession, getStoredUser, isAuthenticated, saveUser } from "../lib/auth";
+
+function describeAccessTier(u) {
+  if (u.access_tier === "premium") return "Premium (assigned)";
+  if (u.access_tier === "free") return "Free (assigned)";
+  const org = u.company?.subscription === "premium" ? "Premium" : "Free";
+  return `Inherit org (${org})`;
+}
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -17,6 +24,7 @@ function AdminUsers() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
+  const [createAccessTier, setCreateAccessTier] = useState("");
 
   const [editUser, setEditUser] = useState(null);
 
@@ -111,6 +119,9 @@ function AdminUsers() {
       if (me?.role === "super_admin") {
         payload.company_id = Number(companyId);
       }
+      if (createAccessTier === "free" || createAccessTier === "premium") {
+        payload.access_tier = createAccessTier;
+      }
 
       await api.post("/admin/users", payload);
 
@@ -121,6 +132,7 @@ function AdminUsers() {
       setPassword("");
       setRole("user");
       setCompanyId("");
+      setCreateAccessTier("");
 
       fetchUsers();
     } catch (err) {
@@ -134,13 +146,30 @@ function AdminUsers() {
     try {
       setActionLoading(editUser.id);
 
-      await api.put(`/admin/users/${editUser.id}`, {
+      const body = {
         name: editUser.name,
         email: editUser.email,
         role: editUser.role,
-      });
+      };
+      const canSetTier =
+        me?.role === "super_admin" ||
+        (me?.role === "admin" && editUser.role !== "super_admin");
+      if (canSetTier) {
+        body.access_tier = editUser.access_tier === "" ? null : editUser.access_tier;
+      }
+
+      await api.put(`/admin/users/${editUser.id}`, body);
 
       toast.success("User updated.");
+      if (editUser.id === me?.id) {
+        try {
+          const r = await api.get("/user");
+          setMe(r.data.user);
+          saveUser(r.data.user);
+        } catch {
+          /* ignore */
+        }
+      }
       setEditUser(null);
       fetchUsers();
     } catch (err) {
@@ -217,8 +246,8 @@ function AdminUsers() {
           </h1>
           <p className="mt-1 max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
             {me?.role === "super_admin"
-              ? "Full platform control: assign Super Admin, organization admin, or customer roles across any organization."
-              : "Manage customers in your organization. Billing changes, removing people, and granting admin rights require approval from the platform super administrator."}
+              ? "Assign roles and set Free or Premium access per user (overrides organization plan), or change organization plans under Organizations."
+              : "Manage people in your organization. Assign Premium or Free access per user. Sensitive removals or promoting admins may still require platform approval."}
           </p>
         </div>
       </div>
@@ -295,6 +324,22 @@ function AdminUsers() {
               </select>
             </div>
           )}
+
+          <div className="sm:col-span-2 lg:col-span-2">
+            <label className="label">Access tier (personal)</label>
+            <select
+              value={createAccessTier}
+              onChange={(e) => setCreateAccessTier(e.target.value)}
+              className="input mt-2"
+            >
+              <option value="">Inherit organization plan</option>
+              <option value="free">Free (override)</option>
+              <option value="premium">Premium (override)</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Overrides organization Free/Premium for this user only (Issue patterns and Smart alerts).
+            </p>
+          </div>
         </div>
 
         <button
@@ -364,6 +409,24 @@ function AdminUsers() {
                 </p>
               )}
             </div>
+
+            {(me?.role === "super_admin" ||
+              (me?.role === "admin" && editUser.role !== "super_admin")) && (
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="label">Access tier (personal)</label>
+                <select
+                  className="input mt-2"
+                  value={editUser.access_tier ?? ""}
+                  onChange={(e) =>
+                    setEditUser({ ...editUser, access_tier: e.target.value })
+                  }
+                >
+                  <option value="">Inherit organization plan</option>
+                  <option value="free">Free (override)</option>
+                  <option value="premium">Premium (override)</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {me?.role === "admin" && editUser.role === "user" && (
@@ -421,6 +484,7 @@ function AdminUsers() {
                   <th className="px-5 py-4">Name</th>
                   <th className="px-5 py-4">Email</th>
                   <th className="px-5 py-4">Organization</th>
+                  <th className="px-5 py-4">Access</th>
                   <th className="px-5 py-4">Status</th>
                   <th className="px-5 py-4">Role</th>
                   <th className="px-5 py-4 text-right">Actions</th>
@@ -453,6 +517,10 @@ function AdminUsers() {
                         {u.company?.name || "—"}
                       </td>
 
+                      <td className="px-5 py-4 text-xs text-slate-600 dark:text-slate-300">
+                        {describeAccessTier(u)}
+                      </td>
+
                       <td className="px-5 py-4">
                         {isDeleted ? (
                           <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-800 dark:bg-rose-950/60 dark:text-rose-200">
@@ -483,7 +551,12 @@ function AdminUsers() {
                             <>
                               <button
                                 type="button"
-                                onClick={() => setEditUser({ ...u })}
+                                onClick={() =>
+                                  setEditUser({
+                                    ...u,
+                                    access_tier: u.access_tier ?? "",
+                                  })
+                                }
                                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"
                               >
                                 Edit

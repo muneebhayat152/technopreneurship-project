@@ -89,6 +89,7 @@ class AdminController extends Controller
             'password' => 'required|min:6',
             'role' => $roleRule,
             'company_id' => 'nullable|exists:companies,id',
+            'access_tier' => 'nullable|in:free,premium',
         ]);
 
         $companyId = $admin->role === 'super_admin'
@@ -102,18 +103,21 @@ class AdminController extends Controller
             ], 422);
         }
 
+        $accessTier = $request->input('access_tier');
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'company_id' => $companyId,
             'role' => $request->role,
+            'access_tier' => $accessTier ?: null,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'User created successfully',
-            'user' => $user
+            'user' => $user->loadMissing('company'),
         ], 201);
     }
 
@@ -154,7 +158,19 @@ class AdminController extends Controller
             'email' => 'required|email|unique:users,email,' . $user->id,
             'role' => ['required', Rule::in($allowedRoles)],
             'password' => 'nullable|min:6',
+            'access_tier' => 'nullable|in:free,premium',
         ]);
+
+        if ($request->has('access_tier')) {
+            if ($user->role === 'super_admin' && $admin->role !== 'super_admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only platform super administrators may change plan access for platform administrators.',
+                ], 403);
+            }
+            $raw = $request->input('access_tier');
+            $user->access_tier = ($raw === '' || $raw === null) ? null : $raw;
+        }
 
         $user->name = $request->name;
         $user->email = $request->email;
@@ -169,7 +185,7 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User updated successfully',
-            'user' => $user
+            'user' => $user->fresh()->loadMissing('company'),
         ]);
     }
 

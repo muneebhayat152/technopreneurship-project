@@ -16,24 +16,23 @@ class EnsurePremiumSubscription
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
-        if ($user->role === 'super_admin') {
+        $user->loadMissing('company');
+
+        if ($user->role !== 'super_admin') {
+            $company = $user->company;
+            if (! $company || ! $company->is_active) {
+                return response()->json(['success' => false, 'message' => 'Company unavailable'], 403);
+            }
+        }
+
+        if ($user->hasPremiumFeatures()) {
             return $next($request);
         }
 
-        $company = $user->company;
-
-        if (! $company || ! $company->is_active) {
-            return response()->json(['success' => false, 'message' => 'Company unavailable'], 403);
-        }
-
-        if ($company->subscription !== 'premium') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Premium subscription required',
-                'upgrade_required' => true,
-            ], 402);
-        }
-
-        return $next($request);
+        return response()->json([
+            'success' => false,
+            'message' => 'Premium access required (assign Premium on the user or upgrade the organization).',
+            'upgrade_required' => true,
+        ], 402);
     }
 }

@@ -125,8 +125,15 @@ function ApprovalRequestsPage() {
         {loading ? (
           <div className="p-10 text-center text-slate-500">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="p-10 text-center text-slate-500 dark:text-slate-400">
-            No requests to show.
+          <div className="p-10 text-center">
+            <p className="text-slate-700 dark:text-slate-200">
+              {me.role === "super_admin"
+                ? "No approval requests right now."
+                : "No requests yet. Plan changes, removals, or promotions you submit will appear here once pending."}
+            </p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Tip: Organization admins use Approve flows for sensitive actions; the list stays empty until someone submits a request.
+            </p>
           </div>
         ) : (
           <table className="w-full text-left text-sm">

@@ -58,8 +58,8 @@ function AlertsPage() {
           Smart alerts
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          This workspace is on Free. Ask your platform administrator to enable
-          Premium for issue analytics and alerts.
+          Smart alerts require Premium access. Ask a platform or organization administrator to assign Premium to your
+          account or upgrade the organization under Users → Access tier.
         </p>
       </div>
     );

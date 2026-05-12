@@ -72,7 +72,7 @@ function AppLayout() {
       .catch(() => {
         clearSession();
       });
-  }, []);
+  }, [location.pathname]);
 
   return (
     <div className="flex h-screen bg-slate-50 transition-colors dark:bg-slate-950">

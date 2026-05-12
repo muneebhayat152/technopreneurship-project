@@ -58,7 +58,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
         return response()->json([
             'success' => true,
-            'user' => $user,
+            'user' => array_merge($user->toArray(), [
+                'effective_access_tier' => $user->computeEffectiveAccessTier(),
+            ]),
         ]);
     });
     Route::post('/auth/logout', [AuthController::class, 'logout']);

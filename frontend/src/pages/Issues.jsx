@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
-import { Layers } from "lucide-react";
+import { Layers, Lock } from "lucide-react";
 import { getStoredUser } from "../lib/auth";
 
 function Issues() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [premiumLocked, setPremiumLocked] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [companyFilter, setCompanyFilter] = useState("");
 
@@ -27,6 +28,7 @@ function Issues() {
   const loadIssues = useCallback(async () => {
     setLoading(true);
     try {
+      setPremiumLocked(false);
       const params = new URLSearchParams();
       if (isSuperAdmin && companyFilter) {
         params.set("company_id", companyFilter);
@@ -36,7 +38,8 @@ function Issues() {
       setIssues(data.issues || []);
     } catch (e) {
       if (e.response?.status === 402) {
-        toast.error("Premium is required for issue pattern analytics.");
+        setPremiumLocked(true);
+        setIssues([]);
       } else {
         toast.error(e.response?.data?.message || "Could not load patterns.");
       }
@@ -70,6 +73,23 @@ function Issues() {
     return (
       <div className="animate-pulse p-8 text-slate-500 dark:text-slate-400">
         Loading…
+      </div>
+    );
+  }
+
+  if (premiumLocked) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+          <Lock className="h-7 w-7 text-slate-600 dark:text-slate-300" />
+        </div>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+          Issue patterns
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          Premium analytics requires Premium access. A platform or organization administrator can set your plan to
+          Premium (for you personally or for the whole organization) under Users.
+        </p>
       </div>
     );
   }

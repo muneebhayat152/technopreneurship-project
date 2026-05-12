@@ -24,8 +24,7 @@ class DashboardController extends Controller
             $clusterQuery = IssueCluster::where('company_id', $user->company_id)->withCount('complaints');
         }
 
-        $isPremium = $user->role === 'super_admin'
-            || ($user->company && $user->company->subscription === 'premium');
+        $isPremium = $user->hasPremiumFeatures();
 
         $total = (clone $complaints)->count();
 
@@ -92,6 +91,8 @@ class DashboardController extends Controller
             'critical_issues_today' => $criticalToday,
             'plan' => [
                 'is_premium' => $isPremium,
+                'effective_access_tier' => $user->computeEffectiveAccessTier(),
+                'user_access_tier' => $user->access_tier,
                 'subscription' => $user->company?->subscription ?? ($user->role === 'super_admin' ? 'platform' : 'free'),
             ],
             'status' => [

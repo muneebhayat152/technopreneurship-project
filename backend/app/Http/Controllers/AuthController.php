@@ -32,6 +32,8 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'company_id' => $user->company_id,
+                'access_tier' => $user->access_tier,
+                'effective_access_tier' => $user->computeEffectiveAccessTier(),
             ],
 
             'company' => $user->company ? [
