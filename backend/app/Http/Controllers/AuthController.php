@@ -51,6 +51,8 @@ class AuthController extends Controller
         $request->validate([
             'company_name' => 'required|string|max:255',
             'company_email' => 'required|email|unique:companies,email',
+            'industry' => 'required|string|max:255',
+            'country' => 'required|string|max:255',
 
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -63,6 +65,8 @@ class AuthController extends Controller
             $company = Company::create([
                 'name' => $request->company_name,
                 'email' => $request->company_email,
+                'industry' => $request->industry,
+                'country' => $request->country,
                 // Freemium: new organizations land on Free; tenant admin can upgrade to Premium in-app.
                 'subscription' => 'free',
                 'is_active' => true

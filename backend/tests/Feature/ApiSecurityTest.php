@@ -91,6 +91,8 @@ class ApiSecurityTest extends TestCase
         $this->postJson('/api/auth/register', [
             'company_name' => 'Proposal Align Co',
             'company_email' => 'proposal-align-co@test.local',
+            'industry' => 'Professional Services',
+            'country' => 'United Kingdom',
             'name' => 'Primary Admin',
             'email' => 'primary-admin@test.local',
             'password' => 'password123',

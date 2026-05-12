@@ -10,12 +10,14 @@ function Register() {
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [country, setCountry] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!name || !email || !password || !companyName || !companyEmail) {
+    if (!name || !email || !password || !companyName || !companyEmail || !industry || !country) {
       toast.error("Fill in all fields.");
       return;
     }
@@ -29,6 +31,8 @@ function Register() {
         password,
         company_name: companyName,
         company_email: companyEmail,
+        industry,
+        country,
       });
 
       toast.success("Account created.");
@@ -104,6 +108,34 @@ function Register() {
               className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
               value={companyEmail}
               onChange={(e) => setCompanyEmail(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="register-industry" className="label dark:text-slate-200">
+              Industry
+            </label>
+            <input
+              id="register-industry"
+              type="text"
+              placeholder="e.g. Retail, Healthcare"
+              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="register-country" className="label dark:text-slate-200">
+              Country
+            </label>
+            <input
+              id="register-country"
+              type="text"
+              placeholder="e.g. Pakistan, United Kingdom"
+              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
             />
           </div>
 
