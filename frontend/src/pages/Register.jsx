@@ -35,6 +35,16 @@ function Register() {
         country,
       });
 
+      if (res.data?.pending_owner_approval) {
+        toast.success(
+          res.data.message ||
+            "Registration received. Platform owners will review your organization.",
+          { duration: 6000 }
+        );
+        navigate("/login");
+        return;
+      }
+
       toast.success("Account created.");
 
       setToken(res.data.token);
@@ -167,6 +177,12 @@ function Register() {
             />
           </div>
         </div>
+
+        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100">
+          New organizations are always created on the <strong>Free</strong> plan. A platform owner must{" "}
+          <strong>approve</strong> your company before you can sign in. Owners may activate you on{" "}
+          <strong>Free</strong> or <strong>Premium</strong>.
+        </p>
 
         <div className="mt-4 space-y-3 sm:mt-6">
           <button

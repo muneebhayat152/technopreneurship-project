@@ -76,6 +76,7 @@ class UserProvidedResetSeeder extends Seeder
                 'email' => $c['email'],
                 'subscription' => $c['subscription'],
                 'is_active' => true,
+                'registration_status' => Company::REGISTRATION_ACTIVE,
                 'industry' => $c['industry'],
                 'country' => $c['country'],
             ]);

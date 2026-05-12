@@ -49,6 +49,12 @@ class CompanyController extends Controller
 
         $company = Company::findOrFail($id);
 
+        if ($company->registration_status !== Company::REGISTRATION_ACTIVE) {
+            return response()->json([
+                'message' => 'Only approved organizations can be toggled active or inactive. Use approve or reject registration first.',
+            ], 422);
+        }
+
         $wasActive = (bool) $company->is_active;
         $company->is_active = ! $company->is_active;
         $company->save();
@@ -94,6 +100,12 @@ class CompanyController extends Controller
             return response()->json([
                 'message' => 'Only the platform super administrator may change organization plans directly. Organization admins must submit a plan-change request for approval.',
             ], 403);
+        }
+
+        if ($company->registration_status !== Company::REGISTRATION_ACTIVE) {
+            return response()->json([
+                'message' => 'This organization is not approved yet. Approve the registration (choose Free or Premium) before changing the plan.',
+            ], 422);
         }
 
         $from = $company->subscription;
@@ -150,6 +162,98 @@ class CompanyController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Organization deleted.',
+        ]);
+    }
+
+    /**
+     * Approve a pending self-registered organization and activate it on Free or Premium.
+     */
+    public function approveRegistration(Request $request, string|int $id)
+    {
+        if ($response = $this->checkSuperAdmin($request->user())) {
+            return $response;
+        }
+
+        $request->validate([
+            'subscription' => 'required|in:free,premium',
+        ]);
+
+        $company = Company::findOrFail((int) $id);
+
+        if ($company->registration_status !== Company::REGISTRATION_PENDING) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only organizations that are waiting for owner approval can be approved here.',
+            ], 422);
+        }
+
+        $subscription = $request->input('subscription');
+        $company->registration_status = Company::REGISTRATION_ACTIVE;
+        $company->is_active = true;
+        $company->subscription = $subscription;
+        $company->save();
+
+        AuditLogger::record(
+            $request,
+            $request->user(),
+            'company.registration_approved',
+            'company',
+            (int) $company->id,
+            [
+                'company_name' => $company->name,
+                'subscription' => $subscription,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Organization approved and activated.',
+            'company' => $company->fresh(),
+        ]);
+    }
+
+    /**
+     * Reject a pending self-registered organization (tenant cannot sign in).
+     */
+    public function rejectRegistration(Request $request, string|int $id)
+    {
+        if ($response = $this->checkSuperAdmin($request->user())) {
+            return $response;
+        }
+
+        $request->validate([
+            'note' => 'nullable|string|max:2000',
+        ]);
+
+        $company = Company::findOrFail((int) $id);
+
+        if ($company->registration_status !== Company::REGISTRATION_PENDING) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only pending organizations can be rejected this way.',
+            ], 422);
+        }
+
+        $company->registration_status = Company::REGISTRATION_REJECTED;
+        $company->is_active = false;
+        $company->save();
+
+        AuditLogger::record(
+            $request,
+            $request->user(),
+            'company.registration_rejected',
+            'company',
+            (int) $company->id,
+            [
+                'company_name' => $company->name,
+                'note' => $request->input('note'),
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Registration rejected. The organization admin cannot access the platform.',
+            'company' => $company->fresh(),
         ]);
     }
 }

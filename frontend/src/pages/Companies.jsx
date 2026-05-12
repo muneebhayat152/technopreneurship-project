@@ -17,9 +17,42 @@ function Companies() {
   const fetchCompanies = async () => {
     try {
       const res = await api.get("/companies");
-      setCompanies(res.data.companies || []);
+      const rows = res.data.companies || [];
+      const rank = (s) => {
+        if (s === "pending") return 0;
+        if (s === "active") return 1;
+        if (s === "rejected") return 2;
+        return 1;
+      };
+      rows.sort((a, b) => rank(a.registration_status || "active") - rank(b.registration_status || "active"));
+      setCompanies(rows);
     } catch {
       toast.error("Could not load organizations.");
+    }
+  };
+
+  const approveRegistration = async (id, subscription) => {
+    try {
+      await api.post(`/companies/${id}/approve-registration`, { subscription });
+      fetchCompanies();
+      toast.success(
+        subscription === "premium"
+          ? "Approved and activated on Premium."
+          : "Approved and activated on Free."
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Approve failed.");
+    }
+  };
+
+  const rejectRegistration = async (id) => {
+    const note = window.prompt("Optional note (shown in audit log only):") || "";
+    try {
+      await api.post(`/companies/${id}/reject-registration`, { note });
+      fetchCompanies();
+      toast.success("Registration rejected.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Reject failed.");
     }
   };
 
@@ -78,8 +111,9 @@ function Companies() {
           Organizations
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          Platform super administrators have full control: activate tenants, set Free or Premium,
-          or permanently delete any organization (including tenants with super administrators).
+          New self-registered tenants start as <strong>Free</strong> and <strong>pending</strong> until a platform owner
+          approves them (as Free or Premium) or rejects. You can still toggle active/inactivate and change plan for{" "}
+          <strong>approved</strong> organizations.
         </p>
       </div>
 
@@ -93,6 +127,7 @@ function Companies() {
               <th className="py-3 pr-4">Industry</th>
               <th className="py-3 pr-4">Country</th>
               <th className="py-3 pr-4">Plan</th>
+              <th className="py-3 pr-4">Registration</th>
               <th className="py-3 pr-4">Status</th>
               <th className="py-3">Actions</th>
             </tr>
@@ -131,6 +166,23 @@ function Companies() {
                   </span>
                 </td>
                 <td className="py-3 pr-4">
+                  {c.registration_status === "pending" && (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+                      Pending approval
+                    </span>
+                  )}
+                  {c.registration_status === "rejected" && (
+                    <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-900 dark:bg-red-950/50 dark:text-red-200">
+                      Rejected
+                    </span>
+                  )}
+                  {(c.registration_status === "active" || !c.registration_status) && (
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      Approved
+                    </span>
+                  )}
+                </td>
+                <td className="py-3 pr-4">
                   {c.is_active ? (
                     <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800 dark:bg-green-950/50 dark:text-green-200">
                       Active
@@ -143,34 +195,72 @@ function Companies() {
                 </td>
                 <td className="py-3">
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleStatus(c.id)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                      Toggle Active
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSubscription(c.id, "free")}
-                      className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600"
-                    >
-                      Free
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSubscription(c.id, "premium")}
-                      className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-                    >
-                      Premium
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteOrganization(c)}
-                      className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
-                    >
-                      Delete org
-                    </button>
+                    {c.registration_status === "pending" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => approveRegistration(c.id, "free")}
+                          className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600"
+                        >
+                          Approve (Free)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => approveRegistration(c.id, "premium")}
+                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                        >
+                          Approve (Premium)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => rejectRegistration(c.id)}
+                          className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {c.registration_status === "rejected" && (
+                      <button
+                        type="button"
+                        onClick={() => deleteOrganization(c)}
+                        className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
+                      >
+                        Delete org
+                      </button>
+                    )}
+                    {c.registration_status !== "pending" && c.registration_status !== "rejected" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => toggleStatus(c.id)}
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        >
+                          Toggle Active
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubscription(c.id, "free")}
+                          className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600"
+                        >
+                          Free
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubscription(c.id, "premium")}
+                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                        >
+                          Premium
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteOrganization(c)}
+                          className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
+                        >
+                          Delete org
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

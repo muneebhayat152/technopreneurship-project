@@ -10,14 +10,21 @@ class Company extends Model
 {
     use HasFactory;
 
+    public const REGISTRATION_PENDING = 'pending';
+
+    public const REGISTRATION_ACTIVE = 'active';
+
+    public const REGISTRATION_REJECTED = 'rejected';
+
     // Allow mass assignment
     protected $fillable = [
         'name',
         'email',
         'subscription',
         'is_active',
+        'registration_status',
         'industry',
-        'country'
+        'country',
     ];
 
     /**

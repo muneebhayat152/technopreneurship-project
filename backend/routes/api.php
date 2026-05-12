@@ -105,6 +105,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             ->middleware('throttle:approval-review');
 
         Route::get('/users', [AdminController::class, 'users']);
+        Route::post('/system/recluster-all', [AdminController::class, 'reclusterAllTenants'])
+            ->middleware('throttle:3,1');
         Route::post('/users', [AdminController::class, 'createUser']);
         Route::put('/users/{id}', [AdminController::class, 'updateUser']);
         Route::put('/users/{id}/restore', [AdminController::class, 'restoreUser']);
@@ -120,6 +122,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::prefix('companies')->group(function () {
 
         Route::get('/', [CompanyController::class, 'index']);              // Get all companies (super admin)
+        Route::post('/{id}/approve-registration', [CompanyController::class, 'approveRegistration'])
+            ->middleware('throttle:approval-review');
+        Route::post('/{id}/reject-registration', [CompanyController::class, 'rejectRegistration'])
+            ->middleware('throttle:approval-review');
         Route::post('/{id}/toggle', [CompanyController::class, 'toggleStatus']); // Activate/Deactivate
         Route::put('/{id}/subscription', [CompanyController::class, 'updateSubscription']);
         Route::delete('/{id}', [CompanyController::class, 'destroy']);    // Remove tenant (super admin)

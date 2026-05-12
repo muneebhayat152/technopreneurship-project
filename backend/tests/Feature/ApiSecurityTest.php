@@ -86,7 +86,7 @@ class ApiSecurityTest extends TestCase
             ]);
     }
 
-    public function test_register_creates_organization_on_free_plan(): void
+    public function test_register_creates_organization_pending_owner_approval_on_free_plan(): void
     {
         $this->postJson('/api/auth/register', [
             'company_name' => 'Proposal Align Co',
@@ -98,11 +98,15 @@ class ApiSecurityTest extends TestCase
             'password' => 'password123',
         ])
             ->assertStatus(201)
-            ->assertJsonPath('company.subscription', 'free');
+            ->assertJsonPath('company.subscription', 'free')
+            ->assertJsonPath('company.registration_status', 'pending')
+            ->assertJsonMissingPath('token');
 
         $this->assertDatabaseHas('companies', [
             'email' => 'proposal-align-co@test.local',
             'subscription' => 'free',
+            'registration_status' => 'pending',
+            'is_active' => false,
         ]);
     }
 }

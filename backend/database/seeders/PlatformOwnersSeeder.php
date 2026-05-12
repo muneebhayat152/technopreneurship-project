@@ -26,6 +26,7 @@ class PlatformOwnersSeeder extends Seeder
                 'name' => 'AI Complaint Doctor',
                 'subscription' => 'premium',
                 'is_active' => true,
+                'registration_status' => Company::REGISTRATION_ACTIVE,
                 'industry' => 'Customer Experience & AI Software',
                 'country' => 'Pakistan',
             ]

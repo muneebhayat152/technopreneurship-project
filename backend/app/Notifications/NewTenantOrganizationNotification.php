@@ -30,7 +30,7 @@ class NewTenantOrganizationNotification extends Notification
         $this->company->loadMissing('id', 'name', 'email', 'industry', 'country');
 
         return [
-            'title' => 'New organization registered',
+            'title' => 'New organization awaiting approval',
             'body' => $this->summaryLine(),
             'kind' => 'tenant_registered',
             'path' => '/companies',
@@ -41,9 +41,9 @@ class NewTenantOrganizationNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New organization — '.config('app.name'))
+            ->subject('Approve new organization — '.config('app.name'))
             ->line($this->summaryLine())
-            ->line('Review organizations in the platform admin area.')
+            ->line('This tenant is on the Free plan until you approve them. In Organizations, approve as Free or Premium, or reject.')
             ->salutation(' ');
     }
 
@@ -53,6 +53,6 @@ class NewTenantOrganizationNotification extends Notification
         $ind = $c->industry ? "{$c->industry}, " : '';
         $co = $c->country ? "{$c->country}" : '';
 
-        return "Organization \"{$c->name}\" ({$c->email}) registered. Primary admin: {$this->admin->email}. {$ind}{$co}";
+        return "Organization \"{$c->name}\" ({$c->email}) registered and is pending platform approval. Primary admin: {$this->admin->email}. {$ind}{$co}";
     }
 }

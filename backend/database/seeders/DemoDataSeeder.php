@@ -110,6 +110,7 @@ class DemoDataSeeder extends Seeder
                     'name' => $row['name'],
                     'subscription' => $row['subscription'],
                     'is_active' => true,
+                    'registration_status' => Company::REGISTRATION_ACTIVE,
                     'industry' => $row['industry'],
                     'country' => $row['country'],
                 ]

@@ -19,5 +19,5 @@ RUN composer dump-autoload --optimize
 ENV PORT=8080
 EXPOSE 8080
 
-# php -S -t public does NOT route /api to Laravel (404). Use artisan serve.
-CMD sh -c "php artisan migrate --force && php artisan db:seed --force --class=PlatformOwnersSeeder && php artisan serve --host=0.0.0.0 --port=${PORT}"
+# php -S -t public does NOT rewrite URLs to index.php → /api returns 404. Use artisan serve.
+CMD sh -c "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT}"

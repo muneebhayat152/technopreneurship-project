@@ -38,6 +38,12 @@ function Login() {
     } catch (err) {
       if (err.response?.status === 401) {
         toast.error("Invalid email or password.");
+      } else if (err.response?.status === 403) {
+        const msg =
+          err.response?.data?.message ||
+          err.userMessage ||
+          "Sign-in not allowed for this account.";
+        toast.error(msg, { duration: 6500 });
       } else {
         toast.error(err.userMessage || "Sign-in failed. Try again.");
       }

@@ -42,6 +42,7 @@ class AuthController extends Controller
                 'email' => $user->company->email,
                 'subscription' => $user->company->subscription,
                 'is_active' => (bool) $user->company->is_active,
+                'registration_status' => $user->company->registration_status ?? Company::REGISTRATION_ACTIVE,
             ] : null,
         ];
     }
@@ -70,9 +71,10 @@ class AuthController extends Controller
                 'email' => $request->company_email,
                 'industry' => $request->industry,
                 'country' => $request->country,
-                // Freemium: new organizations land on Free; tenant admin can upgrade to Premium in-app.
+                // Always Free until platform owners approve; Premium is assigned only at approval (or later).
                 'subscription' => 'free',
-                'is_active' => true
+                'is_active' => false,
+                'registration_status' => Company::REGISTRATION_PENDING,
             ]);
 
             $user = User::create([
@@ -80,15 +82,13 @@ class AuthController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'company_id' => $company->id,
-                'role' => 'admin'
+                'role' => 'admin',
             ]);
-
-            $token = $this->issueToken($user);
 
             DB::commit();
 
             try {
-                PlatformActivityNotifier::notifyNewOrganization($company, $user);
+                PlatformActivityNotifier::notifyNewOrganization($company->fresh(), $user->fresh());
             } catch (\Throwable $e) {
                 Log::warning('tenant_register_notify_failed', [
                     'company_id' => $company->id,
@@ -98,12 +98,15 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Registration successful',
-                'token' => $token,
-
-                'user' => $user->load('company'),
-
-                'company' => $company
+                'pending_owner_approval' => true,
+                'message' => 'Registration received. Your organization is on the Free plan and must be approved by AI Complaint Doctor platform owners before you can sign in.',
+                'company' => [
+                    'id' => $company->id,
+                    'name' => $company->name,
+                    'email' => $company->email,
+                    'subscription' => $company->subscription,
+                    'registration_status' => $company->registration_status,
+                ],
             ], 201);
 
         } catch (\Throwable $e) {
@@ -140,12 +143,37 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // 🚫 Company inactive check (super_admin may have no company)
+        // 🚫 Tenant access (super_admin may have no company)
         if ($user->role !== 'super_admin') {
-            if (!$user->company || !$user->company->is_active) {
+            if (! $user->company) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Company is inactive or missing'
+                    'message' => 'No organization is linked to this account.',
+                ], 403);
+            }
+
+            $reg = $user->company->registration_status ?? Company::REGISTRATION_ACTIVE;
+
+            if ($reg === Company::REGISTRATION_PENDING) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your organization is waiting for approval from AI Complaint Doctor platform owners. You will be able to sign in after approval.',
+                    'registration_status' => Company::REGISTRATION_PENDING,
+                ], 403);
+            }
+
+            if ($reg === Company::REGISTRATION_REJECTED) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This organization was not approved for AI Complaint Doctor. Contact the platform team if you believe this is a mistake.',
+                    'registration_status' => Company::REGISTRATION_REJECTED,
+                ], 403);
+            }
+
+            if (! $user->company->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your organization is inactive. Contact your administrator or platform support.',
                 ], 403);
             }
         }
