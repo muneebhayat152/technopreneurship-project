@@ -46,7 +46,9 @@ api.interceptors.response.use(
     if (error?.code === "ECONNABORTED") {
       error.userMessage = "Request timed out. Please try again.";
     } else if (!error?.response) {
-      error.userMessage = "Network error. Please check your internet connection.";
+      // Browser blocks CORS, DNS/SSL failure, or wrong API host — not "Wi‑Fi down".
+      error.userMessage =
+        `Can't reach the API (${baseURL}). On Vercel set VITE_API_URL to your Railway URL ending in /api and redeploy. On Railway set CORS_ALLOWED_ORIGINS to your exact Vercel URL (https://…).`;
     } else {
       error.userMessage =
         error.response?.data?.message || "Request failed. Please try again.";
