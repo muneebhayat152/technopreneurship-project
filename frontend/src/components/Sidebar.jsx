@@ -6,7 +6,6 @@ import {
   Bell,
   Users,
   Building2,
-  BarChart3,
   ScrollText,
   ClipboardCheck,
   LogOut,
@@ -145,20 +144,12 @@ function Sidebar() {
           )}
 
           {user?.role === "super_admin" && (
-            <>
-              <NavItem
-                to="/platform/analytics"
-                icon={<BarChart3 className="h-4 w-4 opacity-90" />}
-                label="Platform analytics"
-                active={location.pathname === "/platform/analytics"}
-              />
-              <NavItem
-                to="/platform/audit-log"
-                icon={<ScrollText className="h-4 w-4 opacity-90" />}
-                label="Audit log"
-                active={location.pathname === "/platform/audit-log"}
-              />
-            </>
+            <NavItem
+              to="/platform/audit-log"
+              icon={<ScrollText className="h-4 w-4 opacity-90" />}
+              label="Audit log"
+              active={location.pathname === "/platform/audit-log"}
+            />
           )}
         </nav>
 

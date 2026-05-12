@@ -13,7 +13,7 @@ class PlatformGovernanceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_tenant_admin_cannot_view_platform_analytics(): void
+    public function test_tenant_admin_cannot_view_platform_audit_logs(): void
     {
         $company = Company::create([
             'name' => 'Tenant Co',
@@ -32,11 +32,10 @@ class PlatformGovernanceTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $this->getJson('/api/admin/analytics')->assertStatus(403);
         $this->getJson('/api/admin/audit-logs')->assertStatus(403);
     }
 
-    public function test_super_admin_can_view_platform_analytics_and_audit_logs(): void
+    public function test_super_admin_can_view_audit_logs(): void
     {
         $super = User::create([
             'name' => 'Platform Owner',
@@ -47,17 +46,6 @@ class PlatformGovernanceTest extends TestCase
         ]);
 
         Sanctum::actingAs($super);
-
-        $this->getJson('/api/admin/analytics')
-            ->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonStructure([
-                'tenants' => ['active', 'inactive', 'premium_subscriptions', 'total'],
-                'complaints' => ['total', 'last_24_hours', 'last_7_days', 'last_30_days'],
-                'users' => ['total_accounts', 'soft_deleted_accounts'],
-                'reliability' => ['failed_queue_jobs', 'note'],
-                'governance' => ['audit_events_last_24_hours', 'note'],
-            ]);
 
         $this->getJson('/api/admin/audit-logs')
             ->assertOk()

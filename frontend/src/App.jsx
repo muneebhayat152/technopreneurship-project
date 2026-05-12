@@ -19,7 +19,6 @@ import { NotificationBell } from "./components/NotificationBell";
 import IssueDiagnosis from "./pages/IssueDiagnosis";
 import Issues from "./pages/Issues";
 import AlertsPage from "./pages/AlertsPage";
-import PlatformAnalytics from "./pages/PlatformAnalytics";
 import AuditLogPage from "./pages/AuditLogPage";
 import ApprovalRequestsPage from "./pages/ApprovalRequestsPage";
 import { api } from "./lib/api";
@@ -182,15 +181,6 @@ function AppLayout() {
           <Route
             path="/diagnosis"
             element={<Navigate to="/issues" replace />}
-          />
-
-          <Route
-            path="/platform/analytics"
-            element={
-              <ProtectedRoute>
-                <PlatformAnalytics />
-              </ProtectedRoute>
-            }
           />
 
           <Route

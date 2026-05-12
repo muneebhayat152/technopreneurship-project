@@ -8,7 +8,6 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\IssuesController;
-use App\Http\Controllers\PlatformAnalyticsController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AdminApprovalRequestController;
 use App\Http\Controllers\UserNotificationController;
@@ -95,7 +94,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     */
     Route::prefix('admin')->group(function () {
 
-        Route::get('/analytics', [PlatformAnalyticsController::class, 'index']);
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
 
         Route::post('/approval-requests', [AdminApprovalRequestController::class, 'store'])
