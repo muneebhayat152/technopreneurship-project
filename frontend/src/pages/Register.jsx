@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
-import { BrandLogo } from "../components/BrandLogo";
 import { saveUser, setToken } from "../lib/auth";
 
 function Register() {
@@ -67,142 +66,141 @@ function Register() {
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col items-center justify-center">
-      <div className="mb-4 shrink-0 text-center sm:mb-5">
-        <div className="mx-auto mb-3 flex justify-center">
-          <BrandLogo />
+    <div className="flex h-full min-h-0 max-h-full w-full flex-col overflow-hidden bg-slate-950">
+      <h1 className="sr-only">AI Complaint Doctor — Create account</h1>
+
+      <div className="flex min-h-0 flex-1 flex-col px-4 pb-0 pt-3 sm:px-5 sm:pt-4">
+        <div className="card flex min-h-0 w-full max-w-lg flex-1 flex-col self-center overflow-hidden border-slate-700 bg-slate-900 py-3 dark:border-slate-700 sm:py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
+              <div className="sm:col-span-2">
+                <label htmlFor="register-name" className="label dark:text-slate-200">
+                  Full Name
+                </label>
+                <input
+                  id="register-name"
+                  type="text"
+                  placeholder="Full Name"
+                  className="input mt-1 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="register-company-name" className="label dark:text-slate-200">
+                  Company Name
+                </label>
+                <input
+                  id="register-company-name"
+                  type="text"
+                  placeholder="Company Name"
+                  className="input mt-1 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="register-company-email" className="label dark:text-slate-200">
+                  Company Email
+                </label>
+                <input
+                  id="register-company-email"
+                  type="email"
+                  placeholder="Company Email"
+                  className="input mt-1 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                  value={companyEmail}
+                  onChange={(e) => setCompanyEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="register-industry" className="label dark:text-slate-200">
+                  Industry
+                </label>
+                <input
+                  id="register-industry"
+                  type="text"
+                  placeholder="e.g. Retail, Healthcare"
+                  className="input mt-1 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="register-country" className="label dark:text-slate-200">
+                  Country
+                </label>
+                <input
+                  id="register-country"
+                  type="text"
+                  placeholder="e.g. Pakistan, United Kingdom"
+                  className="input mt-1 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="register-email" className="label dark:text-slate-200">
+                  Your Email
+                </label>
+                <input
+                  id="register-email"
+                  type="email"
+                  placeholder="Your Email"
+                  className="input mt-1 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="register-password" className="label dark:text-slate-200">
+                  Password
+                </label>
+                <input
+                  id="register-password"
+                  type="password"
+                  placeholder="Password"
+                  className="input mt-1 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <p className="mt-2.5 rounded-lg border border-amber-200/80 bg-amber-950/35 px-2.5 py-2 text-[11px] leading-snug text-amber-100 dark:border-amber-900/60">
+              New organizations are always created on the <strong>Free</strong> plan. A platform owner must{" "}
+              <strong>approve</strong> your company before you can sign in. Owners may activate you on{" "}
+              <strong>Free</strong> or <strong>Premium</strong>.
+            </p>
+
+            <p className="mt-3 pb-1 text-center text-sm text-slate-400">
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="font-semibold text-violet-400 underline decoration-violet-400/30 underline-offset-2 hover:text-violet-300 hover:decoration-violet-300/50"
+              >
+                Login
+              </button>
+            </p>
+          </div>
         </div>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-          AI Complaint Doctor
-        </h1>
-      </div>
 
-      <div className="card w-full max-w-lg shrink-0 border-slate-200 px-4 py-4 dark:border-slate-700 dark:bg-slate-900 sm:px-6 sm:py-5">
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
-          <div className="sm:col-span-2">
-            <label htmlFor="register-name" className="label dark:text-slate-200">
-              Full Name
-            </label>
-            <input
-              id="register-name"
-              type="text"
-              placeholder="Full Name"
-              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="register-company-name" className="label dark:text-slate-200">
-              Company Name
-            </label>
-            <input
-              id="register-company-name"
-              type="text"
-              placeholder="Company Name"
-              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="register-company-email" className="label dark:text-slate-200">
-              Company Email
-            </label>
-            <input
-              id="register-company-email"
-              type="email"
-              placeholder="Company Email"
-              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-              value={companyEmail}
-              onChange={(e) => setCompanyEmail(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="register-industry" className="label dark:text-slate-200">
-              Industry
-            </label>
-            <input
-              id="register-industry"
-              type="text"
-              placeholder="e.g. Retail, Healthcare"
-              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="register-country" className="label dark:text-slate-200">
-              Country
-            </label>
-            <input
-              id="register-country"
-              type="text"
-              placeholder="e.g. Pakistan, United Kingdom"
-              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="register-email" className="label dark:text-slate-200">
-              Your Email
-            </label>
-            <input
-              id="register-email"
-              type="email"
-              placeholder="Your Email"
-              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="register-password" className="label dark:text-slate-200">
-              Password
-            </label>
-            <input
-              id="register-password"
-              type="password"
-              placeholder="Password"
-              className="input mt-1.5 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100">
-          New organizations are always created on the <strong>Free</strong> plan. A platform owner must{" "}
-          <strong>approve</strong> your company before you can sign in. Owners may activate you on{" "}
-          <strong>Free</strong> or <strong>Premium</strong>.
-        </p>
-
-        <div className="mt-4 space-y-3 sm:mt-6">
+        {/* Half of the primary CTA sits below the viewport fold (overflow-hidden on root). */}
+        <div className="relative mx-auto mt-2 w-full max-w-lg shrink-0 px-4 sm:px-5">
           <button
+            type="button"
             onClick={handleRegister}
             disabled={loading}
-            className="btn-primary w-full"
+            className="btn-primary h-12 w-full translate-y-1/2 shadow-lg shadow-indigo-950/40 sm:h-[3.25rem]"
           >
             {loading ? "Creating…" : "Create Account"}
           </button>
-
-          <p className="text-center text-sm text-slate-600 dark:text-slate-400">
-            Already have an account?{" "}
-            <button
-              type="button"
-              onClick={() => navigate("/login")}
-              className="font-semibold text-violet-700 underline decoration-violet-700/30 underline-offset-2 hover:text-violet-800 hover:decoration-violet-800/50 dark:text-violet-400 dark:hover:text-violet-300"
-            >
-              Login
-            </button>
-          </p>
         </div>
       </div>
     </div>
