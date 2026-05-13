@@ -92,7 +92,7 @@ function AppLayout() {
           <ThemeToggle />
         </div>
         <div
-          className={`flex min-h-0 flex-1 flex-col px-4 sm:px-6 ${isAuthPage ? "overflow-hidden pb-4" : "overflow-auto pb-6"}`}
+          className={`flex min-h-0 flex-1 flex-col px-4 sm:px-6 ${isAuthPage ? "overflow-y-auto overflow-x-hidden pb-8" : "overflow-auto pb-6"}`}
         >
         <Routes>
 
